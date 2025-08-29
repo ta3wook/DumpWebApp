@@ -2,6 +2,8 @@
 
 AWS SAA (Solutions Architect Associate) 시험을 위한 PDF 문제집 기반 연습 애플리케이션입니다.
 
+Vibe Coding으로 제작된 애플리케이션입니다.
+
 ## 🎯 주요 기능
 
 ### 사용자 기능
