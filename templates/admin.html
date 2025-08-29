@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 - AWS SAA 시험 연습 앱{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">관리자 대시보드</h1>
+        <button onclick="toggleUploadForm()" 
+                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+            새 PDF 업로드
+        </button>
+    </div>
+
+            <!-- PDF Upload Form -->
+        <div id="upload-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg" x-data="fileUpload">
+        
+        <!-- Drag & Drop Zone -->
+        <div class="space-y-4">
+            <div class="relative">
+                <div class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
+                     :class="dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'"
+                     @dragover.prevent="dragOver = true"
+                     @dragleave.prevent="dragOver = false"
+                     @drop.prevent="handleFileDrop($event)">
+                    
+                    <div class="space-y-3">
+                        <!-- Upload Icon -->
+                        <div class="mx-auto w-10 h-10 text-gray-400">
+                            <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                        </div>
+                        
+                        <!-- Upload Text -->
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">
+                                <span x-show="!selectedFile">PDF 파일을 드래그하여 업로드</span>
+                                <span x-show="selectedFile" x-text="fileName"></span>
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                <span x-show="!selectedFile">또는 클릭하여 파일 선택</span>
+                                <span x-show="selectedFile">파일이 선택되었습니다</span>
+                            </p>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex justify-center space-x-2">
+                            <button type="button" 
+                                    @click="$refs.adminFileInput.click()"
+                                    class="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors">
+                                파일 선택
+                            </button>
+                            
+                            <button type="button" 
+                                    x-show="selectedFile"
+                                    @click="selectedFile = null; fileName = ''; $refs.adminFileInput.value = ''"
+                                    class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors">
+                                선택 취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden file input for button click -->
+                <input type="file" 
+                       x-ref="adminFileInput"
+                       accept=".pdf"
+                       class="hidden"
+                       @change="handleFileSelect($event)">
+            </div>
+            
+            <!-- Upload Button -->
+            <button type="button" 
+                    @click="uploadFile()"
+                    x-show="selectedFile"
+                    :disabled="uploading"
+                    class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 transition-colors">
+                <span x-show="!uploading">
+                    <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    업로드 및 파싱
+                </span>
+                <span x-show="uploading" class="flex items-center justify-center">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    처리 중...
+                </span>
+            </button>
+        </div>
+        
+        <div id="upload-result" class="mt-4"></div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">총 시험</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_exams }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">총 문제</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_questions }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-purple-100 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">총 세션</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_sessions }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">평균 점수</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ "%.1f"|format(stats.avg_score) }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam List -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">시험 목록</h2>
+        
+        {% if exams %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시험명</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">버전</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">문제 수</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">생성일</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for exam_data in exams %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ exam_data.exam.title }}</div>
+                            <div class="text-sm text-gray-500">{{ exam_data.exam.description or "설명 없음" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ exam_data.exam.version or "N/A" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ exam_data.question_count }}개
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ exam_data.exam.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <a href="/admin/exam/{{ exam_data.exam.id }}/questions" 
+                                   class="text-blue-600 hover:text-blue-900">문제 관리</a>
+                                <button onclick="deleteExam({{ exam_data.exam.id }}, '{{ exam_data.exam.title }}')" 
+                                        class="text-red-600 hover:text-red-900">삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">시험이 없습니다</h3>
+            <p class="mt-1 text-sm text-gray-500">PDF 파일을 업로드하여 첫 번째 시험을 만들어보세요.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Sessions -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">최근 세션</h2>
+        
+        {% if recent_sessions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시험명</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">모드</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">점수</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시작 시간</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for session in recent_sessions %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ session.exam.title }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                       {% if session.mode == 'exam' %}bg-blue-100 text-blue-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ session.mode|title }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if session.score is not none %}
+                                {{ "%.1f"|format(session.score) }}%
+                            {% else %}
+                                미완료
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ session.start_time.strftime('%Y-%m-%d %H:%M') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">세션이 없습니다</h3>
+            <p class="mt-1 text-sm text-gray-500">아직 시험을 치른 사용자가 없습니다.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleUploadForm() {
+    const form = document.getElementById('upload-form');
+    form.classList.toggle('hidden');
+}
+
+function deleteExam(examId, examName) {
+    if (confirm(`정말로 "${examName}" 시험을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+        fetch(`/admin/exam/${examId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('시험이 성공적으로 삭제되었습니다.');
+                location.reload();
+            } else {
+                alert('삭제 중 오류가 발생했습니다: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('삭제 중 오류가 발생했습니다: ' + error);
+        });
+    }
+}
+
+// Alpine.js 컴포넌트 정의 (관리자 페이지용)
+document.addEventListener('alpine:init', () => {
+    Alpine.data('fileUpload', () => ({
+        uploading: false,
+        dragOver: false,
+        selectedFile: null,
+        fileName: '',
+        
+        handleFileDrop(event) {
+            event.preventDefault();
+            this.dragOver = false;
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    this.selectedFile = file;
+                    this.fileName = file.name;
+                    // 파일 input에 파일 설정
+                    const fileInput = this.$refs.adminFileInput;
+                    if (fileInput) {
+                        fileInput.files = files;
+                    }
+                } else {
+                    alert('PDF 파일만 업로드 가능합니다.');
+                }
+            }
+        },
+        
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.type === 'application/pdf') {
+                    this.selectedFile = file;
+                    this.fileName = file.name;
+                } else {
+                    alert('PDF 파일만 업로드 가능합니다.');
+                    event.target.value = '';
+                }
+            }
+        },
+        
+        uploadFile() {
+            if (!this.selectedFile) {
+                alert('파일을 선택해주세요.');
+                return;
+            }
+            
+            this.uploading = true;
+            
+            const formData = new FormData();
+            formData.append('file', this.selectedFile);
+            
+            // 관리자 페이지에서는 다른 엔드포인트 사용
+            const endpoint = window.location.pathname.includes('/admin') ? '/admin/upload-pdf' : '/import/pdf';
+            
+            fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.uploading = false;
+                
+                if (data.success) {
+                    // 성공 메시지 표시
+                    const resultDiv = document.getElementById('upload-result');
+                    resultDiv.innerHTML = `
+                        <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-green-800">
+                                        ${data.message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 파일 선택 초기화
+                    this.selectedFile = null;
+                    this.fileName = '';
+                    const fileInput = this.$refs.adminFileInput;
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
+                    
+                    // 2초 후 페이지 새로고침
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    
+                } else {
+                    // 오류 메시지 표시
+                    const resultDiv = document.getElementById('upload-result');
+                    resultDiv.innerHTML = `
+                        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-red-800">
+                                        ${data.error}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                this.uploading = false;
+                console.error('Error:', error);
+                
+                const resultDiv = document.getElementById('upload-result');
+                resultDiv.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-red-800">
+                                    업로드 중 오류가 발생했습니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    }));
+});
+</script>
+{% endblock %}

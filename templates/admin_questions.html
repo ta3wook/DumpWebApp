@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} - 문제 관리{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">{{ exam.title }}</h1>
+            <p class="text-gray-600">문제 관리</p>
+        </div>
+        <a href="/admin" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+            관리자로 돌아가기
+        </a>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">총 문제</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ questions|length }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">응답된 문제</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {{ questions|selectattr('response_count', '>', 0)|list|length }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">평균 정답률</p>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {% set total_responses = questions|sum(attribute='response_count') %}
+                        {% set total_correct = questions|sum(attribute='correct_count') %}
+                        {% if total_responses > 0 %}
+                            {{ "%.1f"|format((total_correct / total_responses * 100)) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions List -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">문제 목록</h2>
+        
+        {% if questions %}
+        <div class="space-y-4">
+            {% for question_data in questions %}
+            <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="text-sm font-medium text-gray-900">문제 {{ question_data.question.order_index + 1 }}</span>
+                            {% if question_data.response_count > 0 %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full 
+                                       {% if question_data.accuracy >= 70 %}bg-green-100 text-green-800
+                                       {% elif question_data.accuracy >= 50 %}bg-yellow-100 text-yellow-800
+                                       {% else %}bg-red-100 text-red-800{% endif %}">
+                                정답률: {{ question_data.accuracy }}%
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                미응답
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="text-gray-700 mb-2 line-clamp-2">{{ question_data.question.question_text[:200] }}{% if question_data.question.question_text|length > 200 %}...{% endif %}</p>
+                        
+                        <div class="flex items-center space-x-4 text-sm text-gray-500">
+                            <span>응답: {{ question_data.response_count }}회</span>
+                            <span>정답: {{ question_data.correct_count }}회</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="viewQuestion({{ question_data.question.id }})" 
+                                class="text-blue-600 hover:text-blue-900 text-sm">
+                            상세보기
+                        </button>
+                        <button onclick="editQuestion({{ question_data.question.id }})" 
+                                class="text-green-600 hover:text-green-900 text-sm">
+                            편집
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">문제가 없습니다</h3>
+            <p class="mt-1 text-sm text-gray-500">이 시험에는 아직 문제가 없습니다.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function viewQuestion(questionId) {
+    // 문제 상세보기 모달 또는 페이지로 이동
+    alert('문제 상세보기 기능은 향후 구현 예정입니다.');
+}
+
+function editQuestion(questionId) {
+    // 문제 편집 모달 또는 페이지로 이동
+    alert('문제 편집 기능은 향후 구현 예정입니다.');
+}
+</script>
+{% endblock %}

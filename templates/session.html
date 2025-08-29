@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}세션 시작 - AWS SAA 시험 연습 앱{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto text-center">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <div class="mb-6">
+            <svg class="mx-auto h-16 w-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">세션이 시작되었습니다!</h1>
+        <p class="text-gray-600 mb-6">
+            {{ session.exam.title }} - {{ session.mode|title }} 모드
+        </p>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-blue-800">
+                첫 번째 문제로 이동합니다...
+            </p>
+        </div>
+        
+        <a href="/session/{{ session.id }}/question/{{ first_question.id }}" 
+           class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            문제 시작하기
+        </a>
+    </div>
+</div>
+
+<script>
+// 자동으로 첫 번째 문제로 이동
+setTimeout(() => {
+    window.location.href = '/session/{{ session.id }}/question/{{ first_question.id }}';
+}, 2000);
+</script>
+{% endblock %}

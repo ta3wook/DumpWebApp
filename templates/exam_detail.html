@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} - AWS SAA 시험 연습 앱{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Exam Header -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ exam.title }}</h1>
+            {% if exam.version %}
+            <p class="text-lg text-gray-600 mb-4">버전: {{ exam.version }}</p>
+            {% endif %}
+            <p class="text-gray-600 mb-6">{{ exam.description or "설명 없음" }}</p>
+            
+            <div class="flex justify-center space-x-4">
+                <a href="/session/new/{{ exam.id }}?mode=exam" 
+                   class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    시험 모드 시작
+                </a>
+                <a href="/session/new/{{ exam.id }}?mode=study" 
+                   class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                    학습 모드 시작
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Info -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">시험 정보</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <p class="text-sm text-gray-500">생성일</p>
+                <p class="text-gray-900">{{ exam.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">섹션 수</p>
+                <p class="text-gray-900">{{ sections|length }}개</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

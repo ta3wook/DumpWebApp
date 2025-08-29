@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}문제 {{ question.order_index + 1 }} - AWS SAA 시험 연습 앱{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="questionApp()">
+    <!-- Progress Bar -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">진행률</span>
+            <span class="text-sm text-gray-500">{{ progress.answered_count }}/{{ progress.total_questions }}</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                 style="width: {{ progress.progress_percentage }}%"></div>
+        </div>
+    </div>
+
+    <!-- Question Card -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <!-- Question Header -->
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-900">문제 {{ question.order_index + 1 }}</h2>
+            <div class="flex items-center space-x-2">
+                <button @click="toggleFlag()" 
+                        :class="flagged ? 'text-red-600' : 'text-gray-400'"
+                        class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Question Text -->
+        <div class="mb-6">
+            <p class="text-gray-900 whitespace-pre-wrap">{{ question.question_text }}</p>
+        </div>
+
+        <!-- Choices -->
+        <div class="space-y-3 mb-6">
+            {% for choice in question.choices %}
+            <label class="flex items-start p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                   :class="selectedChoice == {{ choice.id }} ? 'border-blue-500 bg-blue-50' : 'border-gray-200'">
+                <input type="radio" 
+                       name="choice" 
+                       value="{{ choice.id }}" 
+                       x-model="selectedChoice"
+                       class="mt-1 mr-3 text-blue-600 focus:ring-blue-500">
+                <div class="flex-1">
+                    <span class="font-medium text-gray-900">{{ choice.choice_label }}.</span>
+                    <span class="ml-2 text-gray-700">{{ choice.choice_text }}</span>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">메모</label>
+            <textarea x-model="notes" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows="3"
+                      placeholder="문제에 대한 메모를 작성하세요..."></textarea>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between items-center">
+            <div class="flex space-x-2">
+                <button @click="saveAndNavigate('prev')" 
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                    이전
+                </button>
+                <button @click="saveAndNavigate('next')" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    다음
+                </button>
+            </div>
+            
+            <!-- 연습 모드일 때만 채점/정답 확인 버튼 표시 -->
+            {% if session.mode == "study" %}
+            <div class="flex space-x-2">
+                <button @click="gradeAnswer()" 
+                        class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors">
+                    채점
+                </button>
+                <button @click="checkAnswer()" 
+                        x-show="!showAnswer"
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                    정답 확인
+                </button>
+                <button @click="submitExam()" 
+                        class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                    시험 제출
+                </button>
+            </div>
+            {% else %}
+            <button @click="submitExam()" 
+                    class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                시험 제출
+            </button>
+            {% endif %}
+        </div>
+        
+        <!-- 연습 모드 채점 결과 표시 -->
+        {% if session.mode == "study" %}
+        <div x-show="showGrading" x-transition class="mt-6 p-4 rounded-lg" 
+             :class="isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+            <div class="flex items-center">
+                <span x-show="isCorrect" class="text-green-600 font-medium">✓ 정답입니다!</span>
+                <span x-show="!isCorrect" class="text-red-600 font-medium">✗ 틀렸습니다.</span>
+            </div>
+        </div>
+        
+        <!-- 연습 모드 정답 상세 표시 -->
+        <div x-show="showAnswer" x-transition class="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+            <div class="mb-2">
+                <span class="text-sm text-gray-600">정답: </span>
+                <span class="font-medium text-gray-900" x-text="correctAnswer"></span>
+            </div>
+            <div x-show="explanation" class="text-sm text-gray-700">
+                <span class="font-medium">설명:</span>
+                <p class="mt-1" x-text="explanation"></p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function questionApp() {
+    return {
+        selectedChoice: {{ response.selected_choice_id or 'null' }},
+        notes: '{{ response.notes or "" }}',
+        flagged: {{ 'true' if response and response.flagged else 'false' }},
+        showGrading: false,
+        showAnswer: false,
+        isCorrect: false,
+        correctAnswer: '',
+        explanation: '',
+        
+        toggleFlag() {
+            this.flagged = !this.flagged;
+        },
+        
+        saveResponse() {
+            const formData = new FormData();
+            formData.append('question_id', {{ question.id }});
+            formData.append('choice_id', this.selectedChoice || '');
+            formData.append('notes', this.notes);
+            formData.append('flagged', this.flagged);
+            
+            return fetch('/session/{{ session.id }}/response', {
+                method: 'POST',
+                body: formData
+            });
+        },
+        
+        async gradeAnswer() {
+            if (!this.selectedChoice) {
+                alert('답을 선택해주세요.');
+                return;
+            }
+            
+            try {
+                const response = await this.saveResponse();
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 연습 모드인 경우 즉시 채점 결과 표시
+                    {% if session.mode == "study" %}
+                    if (result.is_correct !== undefined) {
+                        this.isCorrect = !!result.is_correct;
+                        this.showGrading = true;
+                        // 3초 후 채점 결과 숨기기
+                        setTimeout(() => {
+                            this.showGrading = false;
+                        }, 3000);
+                    }
+                    {% endif %}
+                }
+            } catch (error) {
+                console.error('Error grading answer:', error);
+                alert('채점 중 오류가 발생했습니다.');
+            }
+        },
+        
+        async checkAnswer() {
+            if (!this.selectedChoice) {
+                alert('답을 선택해주세요.');
+                return;
+            }
+            
+            try {
+                // 정답 확인 API 호출
+                const answerResponse = await fetch('/session/{{ session.id }}/question/{{ question.id }}/answer');
+                const answerResult = await answerResponse.json();
+                
+                if (answerResult.success) {
+                    this.correctAnswer = answerResult.correct_answer;
+                    this.explanation = answerResult.explanation;
+                    this.showAnswer = true;
+                }
+            } catch (error) {
+                console.error('Error checking answer:', error);
+                alert('정답 확인 중 오류가 발생했습니다.');
+            }
+        },
+        
+        async saveAndNavigate(direction) {
+            await this.saveResponse();
+            
+            if (direction === 'prev') {
+                // 이전 문제로 이동
+                const prevUrl = '/session/{{ session.id }}/question/{{ question.id - 1 }}';
+                window.location.href = prevUrl;
+            } else {
+                // 다음 문제로 이동
+                const nextUrl = '/session/{{ session.id }}/question/{{ question.id + 1 }}';
+                window.location.href = nextUrl;
+            }
+        },
+        
+        async submitExam() {
+            if (confirm('정말로 시험을 제출하시겠습니까?')) {
+                await this.saveResponse();
+                window.location.href = '/session/{{ session.id }}/submit';
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

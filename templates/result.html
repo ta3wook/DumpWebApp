@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}시험 결과 - AWS SAA 시험 연습 앱{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Result Header -->
+    <div class="bg-white rounded-lg shadow-md p-8 mb-6 text-center">
+        <div class="mb-6">
+            {% if session.score >= 70 %}
+            <svg class="mx-auto h-16 w-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {% else %}
+            <svg class="mx-auto h-16 w-16 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {% endif %}
+        </div>
+        
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">시험 완료!</h1>
+        <p class="text-xl text-gray-600 mb-6">{{ session.exam.title }}</p>
+        
+        <!-- Score Display -->
+        <div class="bg-gray-50 rounded-lg p-6 mb-6">
+            <div class="text-4xl font-bold mb-2 
+                        {% if session.score >= 70 %}text-green-600{% elif session.score >= 50 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                {{ "%.1f"|format(session.score) }}점
+            </div>
+            <p class="text-gray-600">
+                {{ session.correct_answers }}/{{ session.total_questions }} 문제 정답
+            </p>
+        </div>
+        
+        <!-- Performance Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4">
+                <div class="text-2xl font-bold text-blue-600">{{ session.total_questions }}</div>
+                <div class="text-sm text-blue-600">총 문제 수</div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4">
+                <div class="text-2xl font-bold text-green-600">{{ session.correct_answers }}</div>
+                <div class="text-sm text-green-600">정답 수</div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-4">
+                <div class="text-2xl font-bold text-red-600">{{ session.total_questions - session.correct_answers }}</div>
+                <div class="text-sm text-red-600">오답 수</div>
+            </div>
+        </div>
+        
+        <!-- Duration -->
+        {% if session.end_time and session.start_time %}
+        <div class="text-gray-600 mb-6">
+            <p>소요 시간: {{ (session.end_time - session.start_time).total_seconds()|int // 60 }}분 {{ (session.end_time - session.start_time).total_seconds()|int % 60 }}초</p>
+        </div>
+        {% endif %}
+        
+        <!-- Actions -->
+        <div class="flex justify-center space-x-4">
+            <a href="/exam/{{ session.exam.id }}" 
+               class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                다시 시험 보기
+            </a>
+            <a href="/" 
+               class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium">
+                홈으로
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
